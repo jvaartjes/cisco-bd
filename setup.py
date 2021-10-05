@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """The setup script"""
 import os
-import re
 import sys
 
 from setuptools import find_packages, setup
