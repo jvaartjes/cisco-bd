@@ -37,9 +37,9 @@ setup(
     license="GNU General Public License (GPL)",
     long_description_content_type="text/markdown",
     long_description=readme,
-    name="cisco-bd",
-    packages=find_packages(include=["cisco-bd"]),
-    url="https://github.com/jvaartjes/cisco-bd",
+    name="ciscobusinessdashboard",
+    packages=find_packages(include=["ciscobusinessdashboard"]),
+    url="https://github.com/jvaartjes/ciscobusinessdashboard",
     version=os.environ.get('PACKAGE_VERSION'),
     zip_safe=False,
 )
