@@ -19,6 +19,7 @@ with open("README.md") as readme_file:
 setup(
     author="Jochem Vaartjes",
     author_email="jochem@jochem.me",
+    version="0.0.1",
     classifiers=[
         "Framework :: AsyncIO",
         "Intended Audience :: Developers",
@@ -40,6 +41,5 @@ setup(
     name="ciscobusinessdashboard",
     packages=find_packages(include=["ciscobusinessdashboard"]),
     url="https://github.com/jvaartjes/ciscobusinessdashboard",
-    version=os.environ.get('PACKAGE_VERSION'),
     zip_safe=False,
 )

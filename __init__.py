@@ -81,7 +81,3 @@ def get_default_organisation(source=DEFAULT_SOURCE):
                 print('Error payload:')
                 print(json.dumps(response.json(),indent=2))
     return results
-
-org = get_default_organisation()
-print(org)
-
