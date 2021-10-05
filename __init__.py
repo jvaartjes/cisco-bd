@@ -7,13 +7,15 @@ import uuid
 import time
 
 from dataclasses import dataclass
+from aiohttp import ClientSession, ClientResponseError
+
 
 @dataclass
 class CiscoBDOrganisationClass:
     """Cisco Business Dashboard Organisation Class"""
 
     id: str
-    name: str
+    organisation: str
     description: str
     defaultgroup: str
     networkcount: int
@@ -24,9 +26,11 @@ class CiscoBDOrganisationClass:
 
     @staticmethod
     def from_json(item):
+        # attr = item["properties"]
+        id = item
         return CiscoBDOrganisationClass(
-            id=item["id"],
-            name=item["name"],
+            id=id["id"],
+            organisation=item["name"],
             description=item["description"],
             defaultgroup=item["default-group"],
             networkcount=item["network-count"],
@@ -36,58 +40,70 @@ class CiscoBDOrganisationClass:
             changewindow=item["change-window"],
         )
 
+
 DEFAULT_SOURCE = CiscoBDOrganisationClass
-def getToken(keyid,secret,clientid=None,appname="cbdscript.example.com",appver="1.0",lifetime=3600):
-  if clientid == None:
-    clientid = str(uuid.uuid4())
-  claimset = {
-    "iss":appname,
-    "cid":clientid,
-    "appver":appver,
-    "aud":"business-dashboard.cisco.com",
-    "iat":int(time.time()),
-    "exp":int(time.time()+lifetime)
-  }
 
-  return jwt.encode(claimset,secret,algorithm='HS256',headers={'kid':keyid})
 
-#Create Token
+def getToken(
+    keyid,
+    secret,
+    clientid=None,
+    appname="cbdscript.example.com",
+    appver="1.0",
+    lifetime=3600,
+):
+    if clientid == None:
+        clientid = str(uuid.uuid4())
+    claimset = {
+        "iss": appname,
+        "cid": clientid,
+        "appver": appver,
+        "aud": "business-dashboard.cisco.com",
+        "iat": int(time.time()),
+        "exp": int(time.time() + lifetime),
+    }
+
+    return jwt.encode(claimset, secret, algorithm="HS256", headers={"kid": keyid})
+
+
+# Create Token
 
 ## Currently only returns json information on the default organisation
-def get_default_organisation(dashboard,port,keyid,secret,clientid,appname,verify_cbd_cert,source=DEFAULT_SOURCE):
-    token = getToken(keyid,secret,clientid,appname)
-    try:
-        # Build and send the API request.  The getOrganizations API path is
-        # /api/v2/orgs
-        response=requests.get('https://%s:%s/api/v2/orgs' %
-                         (dashboard, port),
-                          headers={'Authorization':"Bearer %s" % token},
-                          verify=verify_cbd_cert)
+async def get_default_organisation(
+    session: ClientSession,
+    *,
+    dashboard,
+    port,
+    keyid,
+    secret,
+    clientid,
+    appname,
+    source=DEFAULT_SOURCE
+):
+    token = getToken(keyid, secret, clientid, appname)
 
-    except requests.exceptions.RequestException as e:
-        # Generally this will be a connection error or timeout.  HTTP errors are
-        # handled in the else section below
-        print("Failed with exception:",e)
-        sys.exit(1)
+    resp = await session.get(
+        "https://%s:%s/api/v2/orgs" % (dashboard, port),
+        headers={"Authorization": "Bearer %s" % token},
+    )
+    data = await resp.json(content_type=None)
 
-    else:
-        if response.status_code == 200:
-            organisations = response.json()
+    if "error" in data:
+        raise ClientResponseError(
+            resp.request_info,
+            resp.history,
+            status=data["error"]["code"],
+            message=data["error"]["message"],
+            headers=resp.headers,
+        )
 
-            for organisation in organisations['data']:
-                if 'default' in organisation:
-                    results = []
-                    try:
-                        results.append(source.from_json(organisation))
-                    except KeyError:
-                        logging.getLogger(__name__).warning("Got wrong data: %s", item)
-        else:
-            # Some other error occurred.
-            print('HTTPError:',response.status_code,response.headers)
+    results = []
 
-             # Most errors return additional information as a json payload
-            if 'application/json' in response.headers['Content-Type']:
-                print('Error payload:')
-                print(json.dumps(response.json(),indent=2))
+    for item in data["data"]:
+        if "default" in item:
+            try:
+                results.append(source.from_json(item))
+            except KeyError:
+                logging.getLogger(__name__).warning("Got wrong data: %s", item)
+
     return results
-

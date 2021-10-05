@@ -6,6 +6,7 @@ import sys
 
 from setuptools import find_packages, setup
 
+
 def read(*parts):
     """Read file."""
     filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), *parts)
@@ -13,13 +14,14 @@ def read(*parts):
     with open(filename, encoding="utf-8", mode="rt") as fp:
         return fp.read()
 
+
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
 setup(
     author="Jochem Vaartjes",
     author_email="jochem@jochem.me",
-    version="0.0.1",
+    version="0.1.0",
     classifiers=[
         "Framework :: AsyncIO",
         "Intended Audience :: Developers",
