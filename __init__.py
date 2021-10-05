@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import requests
 import logging
 import jwt
-import json
 import uuid
 import time
 
@@ -26,7 +24,6 @@ class CiscoBDOrganisationClass:
 
     @staticmethod
     def from_json(item):
-        # attr = item["properties"]
         id = item
         return CiscoBDOrganisationClass(
             id=id["id"],
@@ -43,7 +40,7 @@ class CiscoBDOrganisationClass:
 
 DEFAULT_SOURCE = CiscoBDOrganisationClass
 
-
+# Create acces token
 def getToken(
     keyid,
     secret,
@@ -65,8 +62,6 @@ def getToken(
 
     return jwt.encode(claimset, secret, algorithm="HS256", headers={"kid": keyid})
 
-
-# Create Token
 
 ## Currently only returns json information on the default organisation
 async def get_default_organisation(

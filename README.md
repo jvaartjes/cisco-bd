@@ -8,4 +8,13 @@ Currently Supports:
 - Authentication using JWT Token
 - Getting the Default organisation in JSON format
 
-Early Beta stage
+TODO:
+- Parse Groups
+- Parse Devices
+- Enable / Disable switchports
+- Toggle PoE
+- Backup Config
+- Reboot Devices
+- Handle Events
+
+Early Beta stage but works, all feedback is appreciated. This is my first pip package and also my first Home Assistant Integration.
