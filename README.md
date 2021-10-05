@@ -1,4 +1,4 @@
-# ciscobd
+# ciscobusinessdashboard
 Cisco Business Dashboard API PyPi
 
-Not ready for release yet
+Early Beta stage
