@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import requests
-import json
-import argparse
 import logging
-
-import environment
-import cbdauth
+import jwt
+import json
+import uuid
+import time
 
 from dataclasses import dataclass
 
@@ -38,22 +37,32 @@ class CiscoBDOrganisationClass:
         )
 
 DEFAULT_SOURCE = CiscoBDOrganisationClass
+def getToken(keyid,secret,clientid=None,appname="cbdscript.example.com",appver="1.0",lifetime=3600):
+  if clientid == None:
+    clientid = str(uuid.uuid4())
+  claimset = {
+    "iss":appname,
+    "cid":clientid,
+    "appver":appver,
+    "aud":"business-dashboard.cisco.com",
+    "iat":int(time.time()),
+    "exp":int(time.time()+lifetime)
+  }
+
+  return jwt.encode(claimset,secret,algorithm='HS256',headers={'kid':keyid})
 
 #Create Token
-token = cbdauth.getToken(keyid=environment.keyid,
-                            secret=environment.secret,
-                            clientid=environment.clientid,
-                            appname=environment.appname)
 
 ## Currently only returns json information on the default organisation
-def get_default_organisation(source=DEFAULT_SOURCE):
+def get_default_organisation(dashboard,port,keyid,secret,clientid,appname,verify_cbd_cert,source=DEFAULT_SOURCE):
+    token = getToken(keyid,secret,clientid,appname)
     try:
         # Build and send the API request.  The getOrganizations API path is
         # /api/v2/orgs
         response=requests.get('https://%s:%s/api/v2/orgs' %
-                         (environment.dashboard, environment.port),
+                         (dashboard, port),
                           headers={'Authorization':"Bearer %s" % token},
-                          verify=environment.verify_cbd_cert)
+                          verify=verify_cbd_cert)
 
     except requests.exceptions.RequestException as e:
         # Generally this will be a connection error or timeout.  HTTP errors are
@@ -81,3 +90,4 @@ def get_default_organisation(source=DEFAULT_SOURCE):
                 print('Error payload:')
                 print(json.dumps(response.json(),indent=2))
     return results
+
