@@ -1,11 +1,61 @@
-#!/usr/bin/env python3
 import logging
+from attr import setters
 import jwt
 import uuid
 import time
 
 from dataclasses import dataclass
 from aiohttp import ClientSession, ClientResponseError
+
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityDescription
+
+
+@dataclass
+class CiscoBDSettingsClass:
+    """Cisco Business Dashboard Settings Class"""
+
+    dashboard = ""
+    port = ""
+    keyid = ""
+    secret = ""
+    appname = "cbdscript.example.com"
+    appver = "1.0"
+    clientid = str(uuid.uuid4())
+    token = ""
+    lifetime = 3600
+
+    def __init__(self, dashboard, port, secret, keyid):
+        self.dashboard = dashboard
+        self.port = port
+        self.secret = secret
+        self.keyid = keyid
+
+    def gen_token(self) -> str:
+        """Generate authentication token"""
+        print("Generating Token JWT !")
+        claimset = {
+            "iss": self.appname,
+            "cid": self.clientid,
+            "appver": self.appver,
+            "aud": "business-dashboard.cisco.com",
+            "iat": int(time.time()),
+            "exp": int(time.time() + self.lifetime),
+        }
+
+        self.token = jwt.encode(
+            claimset, self.secret, algorithm="HS256", headers={"kid": self.keyid}
+        )
+
+        return self.token
+
+    def __setattr__(self, name: str, value):
+        """Generate new token when attributes changes"""
+        self.__dict__[name] = value
+        if "token" not in name:
+            if "" not in (self.dashboard, self.port, self.keyid, self.secret):
+                print("Generate new Token")
+                self.gen_token()
 
 
 @dataclass
@@ -24,9 +74,10 @@ class CiscoBDOrganisationClass:
 
     @staticmethod
     def from_json(item):
-        id = item
+        """load json results into Organisation Class"""
+        # id = item
         return CiscoBDOrganisationClass(
-            id=id["id"],
+            id=item["id"],
             organisation=item["name"],
             description=item["description"],
             defaultgroup=item["default-group"],
@@ -38,10 +89,41 @@ class CiscoBDOrganisationClass:
         )
 
 
-DEFAULT_SOURCE = CiscoBDOrganisationClass
+@dataclass
+class CiscoBDNodesClass:
+    """Cisco Business Dashboard Organisation Class"""
+
+    id: str
+    organisation: str
+    description: str
+    defaultgroup: str
+    networkcount: int
+    devicecount: int
+    monitorprofiles: str
+    changewindowtype: str
+    changewindow: str
+
+    @staticmethod
+    def from_json(item):
+        """load json results into Organisation Class"""
+        # id = item
+        return CiscoBDOrganisationClass(
+            id=item["id"],
+            organisation=item["name"],
+            description=item["description"],
+            defaultgroup=item["default-group"],
+            networkcount=item["network-count"],
+            devicecount=item["device-count"],
+            monitorprofiles=item["monitor-profiles"],
+            changewindowtype=item["change-window-type"],
+            changewindow=item["change-window"],
+        )
+
+
+DefaultSource = CiscoBDOrganisationClass
 
 # Create acces token
-def getToken(
+def get_token(
     keyid,
     secret,
     clientid=None,
@@ -49,7 +131,8 @@ def getToken(
     appver="1.0",
     lifetime=3600,
 ):
-    if clientid == None:
+    """Generate token for authentication"""
+    if clientid is None:
         clientid = str(uuid.uuid4())
     claimset = {
         "iss": appname,
@@ -63,23 +146,49 @@ def getToken(
     return jwt.encode(claimset, secret, algorithm="HS256", headers={"kid": keyid})
 
 
-## Currently only returns json information on the default organisation
-async def get_default_organisation(
+async def get_organisation(
     session: ClientSession,
-    *,
-    dashboard,
-    port,
-    keyid,
-    secret,
-    clientid,
-    appname,
-    source=DEFAULT_SOURCE
+    settings: CiscoBDSettingsClass,
+    orgname: str,
+    source=DefaultSource,
 ):
-    token = getToken(keyid, secret, clientid, appname)
+    """Get the organisation specified in orgname from API"""
 
     resp = await session.get(
-        "https://%s:%s/api/v2/orgs" % (dashboard, port),
-        headers={"Authorization": "Bearer %s" % token},
+        "https://%s:%s/api/v2/orgs" % (settings.dashboard, settings.port),
+        headers={"Authorization": "Bearer %s" % settings.token},
+    )
+    data = await resp.json(content_type=None)
+
+    if "error" in data:
+        raise ClientResponseError(
+            resp.request_info,
+            resp.history,
+            status=data["error"]["code"],
+            message=data["error"]["message"],
+            headers=resp.headers,
+        )
+
+    results = []
+
+    for item in data["data"]:
+        if item["name"] == orgname:
+            try:
+                results.append(source.from_json(item))
+            except KeyError:
+                logging.getLogger(__name__).warning("Got wrong data: %s", item)
+
+    return results
+
+
+async def get_default_organisation(
+    session: ClientSession, settings: CiscoBDSettingsClass, source=DefaultSource
+):
+    """Get the default organisation from API"""
+
+    resp = await session.get(
+        "https://%s:%s/api/v2/orgs" % (settings.dashboard, settings.port),
+        headers={"Authorization": "Bearer %s" % settings.token},
     )
     data = await resp.json(content_type=None)
 
@@ -102,3 +211,47 @@ async def get_default_organisation(
                 logging.getLogger(__name__).warning("Got wrong data: %s", item)
 
     return results
+
+
+async def get_organisation_id(
+    session: ClientSession, settings: CiscoBDSettingsClass, orgname: str
+):
+    """input organisation name return the organisation id"""
+
+    resp = await session.get(
+        "https://%s:%s/api/v2/orgs" % (settings.dashboard, settings.port),
+        headers={"Authorization": "Bearer %s" % settings.token},
+    )
+    data = await resp.json(content_type=None)
+
+    for item in data["data"]:
+        if item["name"] == orgname:
+            return item["id"]
+
+    return None
+
+
+async def get_nodes_organisation(
+    session: ClientSession, settings: CiscoBDSettingsClass, orgname
+):
+    """Get the nodes attached to orgid from API"""
+    orgid = await get_organisation_id(session, settings, orgname)
+    print("get_nodes_organisation: ", orgid)
+
+    resp = await session.get(
+        "https://%s:%s/api/v2/nodes?fields=/system-state/hostname,/system-state/type,/system-state/ip,/system-state/sn&type=Device"
+        % (settings.dashboard, settings.port),
+        headers={"Authorization": "Bearer %s" % settings.token, "x-ctx-org-id": orgid},
+    )
+    data = await resp.json(content_type=None)
+
+    if "error" in data:
+        raise ClientResponseError(
+            resp.request_info,
+            resp.history,
+            status=data["error"]["code"],
+            message=data["error"]["message"],
+            headers=resp.headers,
+        )
+
+    return data

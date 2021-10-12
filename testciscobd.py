@@ -7,18 +7,39 @@ import environment
 
 
 async def main():
+    """Run a few commands to test the PyPi library"""
+
+    settings = ciscobusinessdashboard.CiscoBDSettingsClass(
+        dashboard=environment.dashboard,
+        port=environment.port,
+        keyid=environment.keyid,
+        secret=environment.secret,
+    )
+    print("main: settings dash")
+    print(settings.dashboard)
+
     """Simple function to test the output."""
     async with aiohttp.ClientSession() as client:
-        result = await ciscobusinessdashboard.get_default_organisation(
-            client,
-            dashboard=environment.dashboard,
-            port=environment.port,
-            keyid=environment.keyid,
-            secret=environment.secret,
-            clientid=environment.clientid,
-            appname=environment.appname,
+        result = await ciscobusinessdashboard.get_organisation_id(
+            client, settings, orgname="Default"
         )
 
+        print("orgid:")
+        print(result)
+        result = await ciscobusinessdashboard.get_default_organisation(client, settings)
+        print("Default Org:")
+        print(result)
+        result = await ciscobusinessdashboard.get_organisation(
+            client, settings, orgname="Jochem"
+        )
+        print("Jochem Org:")
+        print(result)
+        result = await ciscobusinessdashboard.get_nodes_organisation(
+            client,
+            settings,
+            orgname="Default",
+        )
+        print("Nodes from Org Default:")
         print(result)
 
 
