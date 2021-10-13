@@ -1,14 +1,11 @@
+"""Cisco Business Dashboard PyPi library"""
 import logging
-from attr import setters
-import jwt
 import uuid
 import time
-
 from dataclasses import dataclass
-from aiohttp import ClientSession, ClientResponseError
+import jwt
 
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityDescription
+from aiohttp import ClientSession, ClientResponseError
 
 
 @dataclass
@@ -59,6 +56,41 @@ class CiscoBDSettingsClass:
 
 
 @dataclass
+class CiscoBDNodeClass:
+    """Cisco Business Dashboard Node Class"""
+
+    # id: str = ""
+    # global serial
+    # systemstate: str = ""
+    hostname: str = ""
+    type: str = ""
+    ipaddress: str = ""
+
+    # states: str = ""
+
+    @staticmethod
+    def from_json(item):
+        """load json results into Node Class"""
+        print("item:")
+        print(item)
+
+        # if "states" in item:
+        #    states = item["states"]
+        # if "sn" in item:
+        #    serial = item["sn"]
+
+        return CiscoBDNodeClass(
+            # serial,
+            # states,
+            # id=item["id"],
+            #    systemstate=item,
+            hostname=item["hostname"],
+            type=item["type"],
+            ipaddress=item["ip"],
+        )
+
+
+@dataclass
 class CiscoBDOrganisationClass:
     """Cisco Business Dashboard Organisation Class"""
 
@@ -89,38 +121,9 @@ class CiscoBDOrganisationClass:
         )
 
 
-@dataclass
-class CiscoBDNodesClass:
-    """Cisco Business Dashboard Organisation Class"""
+OrganisationSource = CiscoBDOrganisationClass
+NodeSource = CiscoBDNodeClass
 
-    id: str
-    organisation: str
-    description: str
-    defaultgroup: str
-    networkcount: int
-    devicecount: int
-    monitorprofiles: str
-    changewindowtype: str
-    changewindow: str
-
-    @staticmethod
-    def from_json(item):
-        """load json results into Organisation Class"""
-        # id = item
-        return CiscoBDOrganisationClass(
-            id=item["id"],
-            organisation=item["name"],
-            description=item["description"],
-            defaultgroup=item["default-group"],
-            networkcount=item["network-count"],
-            devicecount=item["device-count"],
-            monitorprofiles=item["monitor-profiles"],
-            changewindowtype=item["change-window-type"],
-            changewindow=item["change-window"],
-        )
-
-
-DefaultSource = CiscoBDOrganisationClass
 
 # Create acces token
 def get_token(
@@ -150,7 +153,7 @@ async def get_organisation(
     session: ClientSession,
     settings: CiscoBDSettingsClass,
     orgname: str,
-    source=DefaultSource,
+    source=OrganisationSource,
 ):
     """Get the organisation specified in orgname from API"""
 
@@ -182,7 +185,7 @@ async def get_organisation(
 
 
 async def get_default_organisation(
-    session: ClientSession, settings: CiscoBDSettingsClass, source=DefaultSource
+    session: ClientSession, settings: CiscoBDSettingsClass, source=OrganisationSource
 ):
     """Get the default organisation from API"""
 
@@ -232,7 +235,10 @@ async def get_organisation_id(
 
 
 async def get_nodes_organisation(
-    session: ClientSession, settings: CiscoBDSettingsClass, orgname
+    session: ClientSession,
+    settings: CiscoBDSettingsClass,
+    orgname,
+    source=NodeSource,
 ):
     """Get the nodes attached to orgid from API"""
     orgid = await get_organisation_id(session, settings, orgname)
@@ -254,4 +260,13 @@ async def get_nodes_organisation(
             headers=resp.headers,
         )
 
-    return data
+    results = []
+    print("raw data:")
+    print(data)
+    for item in data["data"]:
+        try:
+            results.append(source.from_json(item["system-state"]))
+        except KeyError:
+            logging.getLogger(__name__).warning("Got wrong data: %s", item)
+
+    return results

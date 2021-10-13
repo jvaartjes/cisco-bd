@@ -2,8 +2,8 @@
 import asyncio
 import aiohttp
 
-import ciscobusinessdashboard
 import environment
+import ciscobusinessdashboard
 
 
 async def main():
@@ -18,7 +18,6 @@ async def main():
     print("main: settings dash")
     print(settings.dashboard)
 
-    """Simple function to test the output."""
     async with aiohttp.ClientSession() as client:
         result = await ciscobusinessdashboard.get_organisation_id(
             client, settings, orgname="Default"
