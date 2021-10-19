@@ -4,6 +4,8 @@ import uuid
 import time
 from dataclasses import dataclass
 import jwt
+import json
+import types
 
 from aiohttp import ClientSession, ClientResponseError
 
@@ -62,28 +64,48 @@ class CiscoBDNodeClass:
     # id: str = ""
     # global serial
     # systemstate: str = ""
+    alert: int
+    info: int
+    warn: int
+    normal: int
+
     hostname: str = ""
     type: str = ""
     ipaddress: str = ""
+    overallstate: str = ""
+    state: str = ""
 
-    # states: str = ""
+    @staticmethod
+    def __json_extract(obj, key):
+        """Recursively fetch values from nested JSON."""
+        arr = []
+
+        def extract(obj, arr, key):
+            """Recursively search for values of key in JSON tree."""
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if isinstance(v, (dict, list)):
+                        extract(v, arr, key)
+                    elif k == key:
+                        arr.append(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    extract(item, arr, key)
+            return arr
+
+        values = extract(obj, arr, key)
+        return values[0]
 
     @staticmethod
     def from_json(item):
         """load json results into Node Class"""
-        print("item:")
-        print(item)
-
-        # if "states" in item:
-        #    states = item["states"]
-        # if "sn" in item:
-        #    serial = item["sn"]
 
         return CiscoBDNodeClass(
-            # serial,
-            # states,
-            # id=item["id"],
-            #    systemstate=item,
+            overallstate=CiscoBDNodeClass.__json_extract(item, "overall"),
+            info=CiscoBDNodeClass.__json_extract(item, "info"),
+            warn=CiscoBDNodeClass.__json_extract(item, "warn"),
+            normal=CiscoBDNodeClass.__json_extract(item, "normal"),
+            alert=CiscoBDNodeClass.__json_extract(item, "alert"),
             hostname=item["hostname"],
             type=item["type"],
             ipaddress=item["ip"],
@@ -249,7 +271,7 @@ async def get_nodes_organisation(
         % (settings.dashboard, settings.port),
         headers={"Authorization": "Bearer %s" % settings.token, "x-ctx-org-id": orgid},
     )
-    data = await resp.json(content_type=None)
+    data = await resp.json()
 
     if "error" in data:
         raise ClientResponseError(
@@ -261,8 +283,7 @@ async def get_nodes_organisation(
         )
 
     results = []
-    print("raw data:")
-    print(data)
+
     for item in data["data"]:
         try:
             results.append(source.from_json(item["system-state"]))
