@@ -8,8 +8,8 @@ verify_cbd_cert = True
 
 # Generate an access key from the Administration > Users page of the Cisco
 # Business Dashboard GUI. Replace below sample values.
-keyid = "615ac54546dbad0607af8416"
-secret = "b3PoEaZ1rCK39L8IfZmXGWu9vE1paNwo"
+keyid = "61ed092255efc33f669999ef"
+secret = "FKE7mIf6WZYbDkkUMwVRGlF9RiPvFfAP"
 
 # The appname should be unique to the application.  Recommended format is in
 # domain name format
