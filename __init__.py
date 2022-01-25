@@ -171,6 +171,54 @@ def get_token(
     return jwt.encode(claimset, secret, algorithm="HS256", headers={"kid": keyid})
 
 
+async def get_node_interfaces(
+    session: ClientSession, settings: CiscoBDSettingsClass, source=OrganisationSource
+):
+    """Get all the information from with different API requests"""
+    settings.gen_token()
+
+    # TODO replace UID with function input
+    resp = await session.get(
+        "https://%s:%s/api/v2/nodes/04aa667e-4d4b-4843-b784-b87521619ede"
+        % (settings.dashboard, settings.port),
+        headers={"Authorization": "Bearer %s" % settings.token},
+    )
+    data = await resp.json(content_type=None)
+
+    if "error" in data:
+        raise ClientResponseError(
+            resp.request_info,
+            resp.history,
+            status=data["error"]["code"],
+            message=data["error"]["message"],
+            headers=resp.headers,
+        )
+
+    print("Print each key-value pair from JSON response:")
+    for key, value in data.items():
+        print(key, ":", value)
+    interfaces = data["interfaces"]
+    print("Interfaces:")
+    print(interfaces)
+
+    results = []
+
+    for item in interfaces:
+        print("Interface:" + item["name"])
+
+        interface_details = {"name": None}
+        interface_details["name"] = item["name"]
+        interface_details["enabled"] = item["enabled"]
+        if "poe" in item:
+            print("PoE enabled: " + str(item["poe"]["enable"]))
+            interface_details["poe"] = item["poe"]
+            interface_details["poe-enable"] = item["poe"]["enable"]
+
+        results.append(interface_details)
+
+    return results
+
+
 async def get_organisation(
     session: ClientSession,
     settings: CiscoBDSettingsClass,
@@ -210,7 +258,7 @@ async def get_default_organisation(
     session: ClientSession, settings: CiscoBDSettingsClass, source=OrganisationSource
 ):
     """Get the default organisation from API"""
-
+    settings.gen_token()
     resp = await session.get(
         "https://%s:%s/api/v2/orgs" % (settings.dashboard, settings.port),
         headers={"Authorization": "Bearer %s" % settings.token},

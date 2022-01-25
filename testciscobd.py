@@ -23,23 +23,30 @@ async def main():
             client, settings, orgname="Default"
         )
 
-        print("orgid:")
+        print("All Information:")
+
+        result = await ciscobusinessdashboard.get_node_interfaces(client, settings)
         print(result)
-        result = await ciscobusinessdashboard.get_default_organisation(client, settings)
-        print("Default Org:")
-        print(result)
-        result = await ciscobusinessdashboard.get_organisation(
-            client, settings, orgname="Jochem"
-        )
-        print("Jochem Org:")
-        print(result)
-        result = await ciscobusinessdashboard.get_nodes_organisation(
-            client,
-            settings,
-            orgname="Default",
-        )
-        print("Nodes from Org Default:")
-        print(result)
+
+        #        print("orgid:")
+        #        print(result)
+        #        result = await ciscobusinessdashboard.get_default_organisation(client, settings)
+        #        print("Default Org:")
+        #        print(result)
+        #        result = await ciscobusinessdashboard.get_organisation(
+        #            client, settings, orgname="Jochem"
+        #        )
+        #        print("Jochem Org:")
+        #        print(result)
+
+
+#       result = await ciscobusinessdashboard.get_nodes_organisation(
+#           client,
+#           settings,
+#           orgname="Default",
+#       )
+#       print("Nodes from Org Default:")
+#       print(result)
 
 
 loop = asyncio.get_event_loop()

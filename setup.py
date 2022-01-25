@@ -20,7 +20,7 @@ with open("README.md", encoding="utf8") as readme_file:
 setup(
     author="Jochem Vaartjes",
     author_email="jochem@jochem.me",
-    version="0.1.1",
+    version="0.1.2",
     classifiers=[
         "Framework :: AsyncIO",
         "Intended Audience :: Developers",
